@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>¿Qué es un agente de IA?</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --red: #E4002B;
+    --red-dark: #A3001F;
+    --red-bright: #FF2E48;
+    --red-glow: rgba(228,0,43,0.55);
+    --black: #0A0A0A;
+    --black-2: #141414;
+    --white: #FAFAFA;
+    --grey: #9a9792;
+  }
+  *{ box-sizing:border-box; margin:0; padding:0; }
+  html,body{ height:100%; overflow:hidden; background:var(--black); }
+  body{
+    font-family:'Inter', sans-serif;
+    color:var(--white);
+    -webkit-font-smoothing:antialiased;
+  }
+  h1,.headline{ font-family:'Anton', 'Inter', sans-serif; font-weight:400; text-transform:uppercase; letter-spacing:0.01em; }
+
+  .deck{ position:relative; width:100vw; height:100vh; }
+
+  .slide{
+    position:absolute; inset:0;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    padding:6vh 8vw;
+    background:var(--black);
+    opacity:0; pointer-events:none;
+    transform:translateX(40px);
+    transition:opacity .5s ease, transform .5s ease;
+  }
+  .slide.active{ opacity:1; pointer-events:auto; transform:translateX(0); }
+  .slide.prev{ transform:translateX(-40px); }
+  .slide.red-bg{ background:var(--red); color:var(--black); }
+  .slide.red-bg .grey{ color:rgba(10,10,10,0.6); }
+
+  .eyebrow{
+    position:relative; z-index:2;
+    font-size:12px; font-weight:700; letter-spacing:0.22em; text-transform:uppercase;
+    color:var(--red-bright); margin-bottom:18px;
+  }
+  .red-bg .eyebrow{ color:var(--black); opacity:.88; }
+
+  .headline{
+    position:relative; z-index:2;
+    font-size:clamp(30px, 5.4vw, 68px);
+    line-height:1.05;
+    text-align:center;
+    max-width:16ch;
+    margin-bottom:20px;
+  }
+  .sub{
+    position:relative; z-index:2;
+    font-size:clamp(14px, 1.5vw, 19px);
+    color:var(--grey);
+    text-align:center;
+    max-width:46ch;
+    line-height:1.5;
+    font-weight:500;
+  }
+  .red-bg .sub{ color:rgba(10,10,10,0.88); }
+
+  .visual{
+    width:min(720px, 82vw);
+    height:min(300px, 32vh);
+    margin:2vh 0;
+    position:relative;
+    display:flex; align-items:center; justify-content:center;
+  }
+
+  /* ---------- Nav ---------- */
+  .nav{
+    position:fixed; left:0; right:0; bottom:0;
+    display:flex; align-items:center; justify-content:center;
+    gap:22px;
+    padding:22px 0;
+    z-index:20;
+  }
+  .nav-btn{
+    width:46px; height:46px; border-radius:50%;
+    border:1.5px solid rgba(250,250,250,0.25);
+    background:rgba(255,255,255,0.04);
+    color:var(--white);
+    font-size:18px;
+    cursor:pointer;
+    display:flex; align-items:center; justify-content:center;
+    transition:border-color .15s ease, background .15s ease, transform .1s ease;
+  }
+  .nav-btn:hover{ border-color:var(--red); background:rgba(228,0,43,0.12); }
+  .nav-btn:active{ transform:scale(0.92); }
+  .nav-btn:disabled{ opacity:.25; cursor:default; }
+  .nav-btn:disabled:hover{ border-color:rgba(250,250,250,0.25); background:rgba(255,255,255,0.04); }
+
+  .dots{ display:flex; gap:9px; }
+  .dot{
+    width:8px; height:8px; border-radius:50%;
+    background:rgba(250,250,250,0.25);
+    cursor:pointer;
+    transition:background .2s ease, transform .2s ease;
+  }
+  .dot.active{ background:var(--red); transform:scale(1.35); }
+
+  .counter{
+    position:fixed; top:26px; right:32px;
+    font-size:13px; letter-spacing:0.08em; color:rgba(250,250,250,0.5);
+    font-variant-numeric:tabular-nums;
+    z-index:20;
+    transition:color .3s ease;
+  }
+  body.red-active .counter{ color:rgba(10,10,10,0.55); }
+
+  .brand{
+    position:fixed; top:26px; left:32px;
+    font-size:12px; font-weight:700; letter-spacing:0.18em; text-transform:uppercase;
+    color:rgba(250,250,250,0.4);
+    z-index:20;
+    transition:color .3s ease;
+  }
+  body.red-active .brand{ color:rgba(10,10,10,0.45); }
+
+  @media (prefers-reduced-motion: reduce){
+    *{ animation:none !important; transition:none !important; }
+  }
+
+  /* =========================================================
+     VISUAL 1 — Portada: círculo que respira, detrás del texto
+  ========================================================= */
+  .v-hero{ position:absolute; inset:0; margin:0; width:auto; height:auto; z-index:0; pointer-events:none; }
+  .v-hero .orb{
+    position:absolute; top:50%; left:50%; transform:translate(-50%,-50%) scale(0.7);
+    width:min(300px, 70vw); height:min(300px, 70vw); border-radius:50%;
+    background:radial-gradient(circle at 40% 35%, var(--red-dark), var(--black) 72%);
+    box-shadow:0 0 90px 10px var(--red-glow);
+    filter:blur(2px);
+    opacity:0;
+  }
+  .run .v-hero .orb{ animation: orbIn 1.4s cubic-bezier(.2,.8,.2,1) forwards, breathe 3.2s ease-in-out 1.4s infinite; }
+  @keyframes orbIn{ to{ opacity:.55; transform:translate(-50%,-50%) scale(1); } }
+  @keyframes breathe{ 0%,100%{ transform:translate(-50%,-50%) scale(1); } 50%{ transform:translate(-50%,-50%) scale(1.06); } }
+
+  /* Portada: blanco siempre, para contrastar tanto contra el rojo como contra la esfera */
+  .slide[data-anim="v-hero"] .eyebrow{ color:#fff; opacity:.85; }
+  .slide[data-anim="v-hero"] .headline{ color:#fff; }
+  .slide[data-anim="v-hero"] .sub{ color:rgba(255,255,255,0.85); }
+
+  /* =========================================================
+     VISUAL 2 — Chatbot: pregunta, respuesta, pared
+  ========================================================= */
+  .v-chat{ gap:14px; flex-direction:column; align-items:flex-start !important; width:340px; }
+  .bubble{
+    padding:12px 18px; border-radius:16px; font-weight:600; font-size:15px;
+    opacity:0; transform:translateY(10px);
+  }
+  .bubble.q{ align-self:flex-start; background:#232323; border-bottom-left-radius:4px; }
+  .bubble.a{ align-self:flex-end; background:var(--red); color:var(--black); border-bottom-right-radius:4px; }
+  .wall{
+    align-self:center; margin-top:10px;
+    width:60px; height:5px; border-radius:3px; background:rgba(250,250,250,0.25);
+    opacity:0;
+  }
+  .run .v-chat .bubble.q{ animation: popIn .5s ease .2s forwards; }
+  .run .v-chat .bubble.a{ animation: popIn .5s ease 1s forwards; }
+  .run .v-chat .wall{ animation: fadeIn .4s ease 1.9s forwards, shake .35s ease 2.3s; }
+  @keyframes popIn{ to{ opacity:1; transform:translateY(0); } }
+  @keyframes fadeIn{ to{ opacity:1; } }
+  @keyframes shake{ 0%,100%{ transform:translateX(0); } 30%{ transform:translateX(-4px); } 60%{ transform:translateX(4px); } }
+
+  /* =========================================================
+     VISUAL 3 — Definición: cadena de pasos con pulso
+  ========================================================= */
+  .v-chain{ gap:0; }
+  .chain-track{ position:relative; display:flex; align-items:center; gap:54px; }
+  .chain-node{
+    width:16px; height:16px; border-radius:50%;
+    background:#2a2a2a; border:2px solid rgba(250,250,250,0.2);
+    position:relative; z-index:2;
+  }
+  .chain-line{ position:absolute; top:50%; left:8px; right:8px; height:2px; background:rgba(250,250,250,0.15); z-index:1; }
+  .run .v-chain .chain-node{ animation: nodePulse 3.6s ease-in-out infinite; }
+  .run .v-chain .chain-node:nth-child(1){ animation-delay:0s; }
+  .run .v-chain .chain-node:nth-child(3){ animation-delay:.4s; }
+  .run .v-chain .chain-node:nth-child(5){ animation-delay:.8s; }
+  .run .v-chain .chain-node:nth-child(7){ animation-delay:1.2s; }
+  .run .v-chain .chain-node:nth-child(9){ animation-delay:1.6s; }
+  @keyframes nodePulse{
+    0%, 92%, 100%{ background:#2a2a2a; box-shadow:none; border-color:rgba(250,250,250,0.2); }
+    8%,22%{ background:var(--red); box-shadow:0 0 22px 4px var(--red-glow); border-color:var(--red); }
+  }
+
+  /* =========================================================
+     VISUAL 4 — Claude vs Claude Code
+  ========================================================= */
+  .v-compare{ gap:0; width:100%; max-width:640px; }
+  .compare-row{ display:flex; width:100%; height:100%; }
+  .compare-col{ flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; position:relative; }
+  .compare-col + .compare-col{ border-left:1px solid rgba(250,250,250,0.15); }
+  .compare-label{ font-size:12px; font-weight:700; letter-spacing:.12em; text-transform:uppercase; color:var(--grey); }
+  .single-arrow{ width:70px; height:3px; background:rgba(250,250,250,0.3); position:relative; opacity:0; }
+  .single-arrow::after{ content:''; position:absolute; right:-2px; top:-4px; width:10px; height:10px; border-top:3px solid rgba(250,250,250,0.3); border-right:3px solid rgba(250,250,250,0.3); transform:rotate(45deg); }
+  .dead-end{ width:3px; height:22px; background:rgba(250,250,250,0.3); opacity:0; }
+  .run .v-compare .single-arrow{ animation: growRight .6s ease .3s forwards; }
+  .run .v-compare .dead-end{ animation: fadeIn .3s ease 1s forwards; }
+  @keyframes growRight{ from{ width:0; opacity:0; } to{ width:70px; opacity:1; } }
+  .loop{ width:66px; height:66px; border-radius:50%; border:3px solid var(--red); border-top-color:transparent; opacity:0; }
+  .run .v-compare .loop{ animation: fadeIn .4s ease .3s forwards, spin 1.6s linear .7s infinite; }
+  @keyframes spin{ to{ transform:rotate(360deg); } }
+  .loop-tags{ display:flex; gap:8px; font-size:10px; color:var(--grey); letter-spacing:.05em; }
+  .loop-tags span{ opacity:0; }
+  .run .v-compare .loop-tags span:nth-child(1){ animation: fadeIn .3s ease 1s forwards; }
+  .run .v-compare .loop-tags span:nth-child(2){ animation: fadeIn .3s ease 1.4s forwards; }
+  .run .v-compare .loop-tags span:nth-child(3){ animation: fadeIn .3s ease 1.8s forwards; }
+
+  /* =========================================================
+     VISUAL 5 — Analogía del asistente
+  ========================================================= */
+  .v-analogy{ gap:22px; }
+  .person{ font-size:64px; opacity:0; transform:scale(.8); }
+  .run .v-analogy .person{ animation: popIn2 .5s ease .2s forwards; }
+  @keyframes popIn2{ to{ opacity:1; transform:scale(1); } }
+  .scribble{ display:flex; flex-direction:column; gap:8px; }
+  .scribble .line{ height:8px; border-radius:4px; background:rgba(250,250,250,0.18); opacity:0; }
+  .scribble .line:nth-child(1){ width:120px; }
+  .scribble .line:nth-child(2){ width:80px; margin-left:20px; }
+  .scribble .line:nth-child(3){ width:100px; }
+  .run .v-analogy .scribble .line{ animation: wobbleIn .5s ease forwards; }
+  .run .v-analogy .scribble .line:nth-child(1){ animation-delay:.6s; }
+  .run .v-analogy .scribble .line:nth-child(2){ animation-delay:.8s; }
+  .run .v-analogy .scribble .line:nth-child(3){ animation-delay:1s; }
+  @keyframes wobbleIn{ 0%{ opacity:0; transform:translateX(-8px) rotate(-1deg);} 60%{ transform:translateX(2px) rotate(.5deg);} 100%{ opacity:1; transform:translateX(0) rotate(0);} }
+
+  /* =========================================================
+     VISUAL 6 — Instrucciones: de vago a claro
+  ========================================================= */
+  .v-instructions{ flex-direction:column; gap:16px; }
+  .blur-word{ font-family:'Anton'; font-size:34px; letter-spacing:.02em; color:var(--grey); filter:blur(9px); opacity:.6; }
+  .sharp-word{ font-family:'Anton'; font-size:34px; letter-spacing:.02em; color:var(--red); filter:blur(9px); opacity:0; }
+  .run .v-instructions .blur-word{ animation: staysBlur 1.6s ease forwards; }
+  .run .v-instructions .sharp-word{ animation: sharpen .8s ease 1.6s forwards; }
+  @keyframes staysBlur{ 0%{ filter:blur(9px); opacity:.6; } 80%{ filter:blur(9px); opacity:.6; } 100%{ filter:blur(9px); opacity:0; } }
+  @keyframes sharpen{ 0%{ filter:blur(9px); opacity:0; } 40%{ opacity:1; } 100%{ filter:blur(0); opacity:1; } }
+
+  /* =========================================================
+     VISUAL 7 — Herramientas: iconos que se acoplan
+  ========================================================= */
+  .v-tools{ position:relative; }
+  .tool-hub{
+    width:74px; height:74px; border-radius:20px; background:var(--red);
+    display:flex; align-items:center; justify-content:center; font-size:28px;
+    opacity:0; transform:scale(.6); position:relative; z-index:2;
+  }
+  .run .v-tools .tool-hub{ animation: popIn2 .5s ease .1s forwards; }
+  .tool-icon{
+    position:absolute; font-size:26px; opacity:0;
+  }
+  .tool-icon.t1{ left:8%; top:10%; }
+  .tool-icon.t2{ right:8%; top:10%; }
+  .tool-icon.t3{ left:8%; bottom:10%; }
+  .tool-icon.t4{ right:8%; bottom:10%; }
+  .run .v-tools .t1{ animation: dockIn .6s ease .6s forwards; }
+  .run .v-tools .t2{ animation: dockIn .6s ease .9s forwards; }
+  .run .v-tools .t3{ animation: dockIn .6s ease 1.2s forwards; }
+  .run .v-tools .t4{ animation: dockIn .6s ease 1.5s forwards; }
+  @keyframes dockIn{
+    0%{ opacity:0; transform:translate(0,0) scale(1.3); }
+    60%{ opacity:1; }
+    100%{ opacity:1; transform:translate(var(--tx,0),var(--ty,0)) scale(0.9); }
+  }
+  .tool-icon.t1{ --tx:78px; --ty:32px; }
+  .tool-icon.t2{ --tx:-78px; --ty:32px; }
+  .tool-icon.t3{ --tx:78px; --ty:-32px; }
+  .tool-icon.t4{ --tx:-78px; --ty:-32px; }
+
+  /* =========================================================
+     VISUAL 8 — Secuencia: pulso viajando por pasos
+  ========================================================= */
+  .v-sequence{ position:relative; width:min(640px,80vw); }
+  .seq-track{ position:relative; display:flex; justify-content:space-between; width:100%; }
+  .seq-box{
+    width:78px; height:52px; border-radius:8px; background:#1c1c1c; border:1.5px solid rgba(250,250,250,0.18);
+    display:flex; align-items:center; justify-content:center; font-size:20px; position:relative; z-index:2;
+  }
+  .seq-bar{ position:absolute; top:50%; left:39px; right:39px; height:2px; background:rgba(250,250,250,0.12); z-index:1; }
+  .seq-dot{
+    position:absolute; top:50%; left:0; width:12px; height:12px; margin-top:-6px; border-radius:50%;
+    background:var(--red); box-shadow:0 0 16px 3px var(--red-glow); z-index:3; opacity:0;
+  }
+  .run .v-sequence .seq-dot{ animation: travel 3.2s ease-in-out .3s infinite; }
+  @keyframes travel{
+    0%{ left:2%; opacity:0; }
+    5%{ opacity:1; }
+    95%{ opacity:1; }
+    100%{ left:96%; opacity:0; }
+  }
+  .run .v-sequence .seq-box{ animation: boxLight 3.2s ease-in-out .3s infinite; }
+  .run .v-sequence .seq-box:nth-child(1){ animation-delay:.15s; }
+  .run .v-sequence .seq-box:nth-child(2){ animation-delay:.75s; }
+  .run .v-sequence .seq-box:nth-child(3){ animation-delay:1.35s; }
+  .run .v-sequence .seq-box:nth-child(4){ animation-delay:1.95s; }
+  .run .v-sequence .seq-box:nth-child(5){ animation-delay:2.55s; }
+  @keyframes boxLight{
+    0%,88%,100%{ border-color:rgba(250,250,250,0.18); }
+    5%,18%{ border-color:var(--red); box-shadow:0 0 18px -2px var(--red-glow); }
+  }
+
+  /* =========================================================
+     VISUAL 9 — Lo que hay detrás: capas
+  ========================================================= */
+  .v-layers{ flex-direction:column; gap:10px; }
+  .layer{
+    width:340px; padding:12px 18px; border-radius:10px;
+    font-size:13px; font-weight:700; letter-spacing:.04em;
+    display:flex; align-items:center; justify-content:space-between;
+    opacity:0; transform:translateY(14px);
+  }
+  .layer.top{ background:var(--red-bright); color:var(--black); }
+  .layer.deep{ background:#1c1c1c; color:var(--grey); border:1px solid rgba(250,250,250,0.12); }
+  .run .v-layers .layer.top{ animation: layerIn .5s ease .1s forwards; }
+  .run .v-layers .layer:nth-child(2){ animation: layerIn .5s ease .7s forwards; }
+  .run .v-layers .layer:nth-child(3){ animation: layerIn .5s ease 1s forwards; }
+  .run .v-layers .layer:nth-child(4){ animation: layerIn .5s ease 1.3s forwards; }
+  @keyframes layerIn{ to{ opacity:1; transform:translateY(0); } }
+
+  /* =========================================================
+     VISUAL 10 — Para qué sirve: tarjetas que voltean
+  ========================================================= */
+  .v-cards{ gap:16px; }
+  .flip-card{ width:120px; height:120px; perspective:600px; }
+  .flip-inner{
+    position:relative; width:100%; height:100%; transform-style:preserve-3d;
+    transition:transform .6s ease; border-radius:14px;
+  }
+  .run .v-cards .flip-card:nth-child(1) .flip-inner{ animation: flip .1s ease 1s forwards; }
+  .run .v-cards .flip-card:nth-child(2) .flip-inner{ animation: flip .1s ease 1.4s forwards; }
+  .run .v-cards .flip-card:nth-child(3) .flip-inner{ animation: flip .1s ease 1.8s forwards; }
+  .run .v-cards .flip-card:nth-child(4) .flip-inner{ animation: flip .1s ease 2.2s forwards; }
+  @keyframes flip{ to{ transform:rotateY(180deg); } }
+  .flip-face{
+    position:absolute; inset:0; backface-visibility:hidden; border-radius:14px;
+    display:flex; align-items:center; justify-content:center; flex-direction:column; gap:8px;
+  }
+  .flip-face.front{ background:#1c1c1c; border:1.5px solid rgba(250,250,250,0.15); font-size:30px; }
+  .flip-face.back{ background:var(--red-bright); color:var(--black); transform:rotateY(180deg); font-size:12px; font-weight:800; text-align:center; padding:8px; text-transform:uppercase; letter-spacing:.04em; }
+
+  /* =========================================================
+     VISUAL 11 — El filtro: bifurcación
+  ========================================================= */
+  .v-fork{ position:relative; width:min(560px,80vw); flex-direction:column; gap:10px; }
+  .fork-path{ display:flex; align-items:center; gap:10px; opacity:0; }
+  .fork-path .tag{ font-size:11px; font-weight:800; width:70px; flex-shrink:0; }
+  .fork-path.no .tag{ color:var(--grey); }
+  .fork-path.yes .tag{ color:var(--red-bright); }
+  .fork-line{ height:3px; background:rgba(250,250,250,0.2); flex:1; position:relative; }
+  .fork-path.no .fork-line{ background:rgba(250,250,250,0.2); }
+  .fork-path.yes .fork-line{ background:transparent; display:flex; gap:6px; align-items:center; }
+  .fork-path.yes .fork-line span{ width:14px; height:3px; border-radius:2px; background:var(--red); }
+  .run .v-fork .fork-path.no{ animation: fadeIn .5s ease .4s forwards; }
+  .run .v-fork .fork-path.yes{ animation: fadeIn .5s ease .9s forwards; }
+
+  /* =========================================================
+     VISUAL 12 — Panorama: espectro
+  ========================================================= */
+  .v-spectrum{ flex-direction:column; gap:26px; width:min(680px,84vw); }
+  .spectrum-bar{ position:relative; width:100%; height:6px; border-radius:4px; background:linear-gradient(90deg, #2a2a2a, var(--red)); }
+  .red-bg .spectrum-bar{ background:linear-gradient(90deg, rgba(10,10,10,0.2), var(--black)); }
+  .spectrum-dot{
+    position:absolute; top:50%; width:20px; height:20px; margin-top:-10px; margin-left:-10px;
+    border-radius:50%; background:var(--white); box-shadow:0 0 0 4px rgba(228,0,43,0.35);
+    left:2%; opacity:0;
+  }
+  .red-bg .spectrum-dot{ box-shadow:0 0 0 4px rgba(10,10,10,0.35); }
+  .run .v-spectrum .spectrum-dot{ animation: slideTravel 1.8s cubic-bezier(.2,.8,.2,1) .3s forwards; }
+  @keyframes slideTravel{ 0%{ left:2%; opacity:0; } 15%{ opacity:1; } 100%{ left:34%; opacity:1; } }
+  .spectrum-labels{ display:flex; justify-content:space-between; font-size:11px; color:var(--grey); font-weight:700; letter-spacing:.03em; }
+  .spectrum-labels span:nth-child(2){ color:var(--red-bright); }
+  .red-bg .spectrum-labels span{ color:rgba(10,10,10,0.7); }
+  .red-bg .spectrum-labels span:nth-child(2){ color:var(--black); text-decoration:underline; text-underline-offset:3px; }
+
+</style>
+</head>
+<body>
+
+<div class="brand">Moki · Dekids</div>
+<div class="counter" id="counter">01 / 12</div>
+
+<div class="deck" id="deck">
+
+  <!-- 1 -->
+  <section class="slide red-bg" data-anim="v-hero">
+    <div class="visual v-hero"><div class="orb"></div></div>
+    <div class="eyebrow">Antes de construir uno</div>
+    <h1 class="headline">¿Qué es un agente de IA?</h1>
+    <div class="sub">En esta sesión vamos a ver de qué está hecho un agente y cuándo de verdad conviene usar uno.</div>
+  </section>
+
+  <!-- 2 -->
+  <section class="slide" data-anim="v-chat">
+    <div class="eyebrow">Lo que ya conoces</div>
+    <h1 class="headline">Preguntas. Responde. Se detiene.</h1>
+    <div class="visual v-chat">
+      <div class="bubble q">¿Cómo hago esto?</div>
+      <div class="bubble a">Así se hace →</div>
+      <div class="wall"></div>
+    </div>
+    <div class="sub">Tú decides qué preguntar después. El chat no continúa por su cuenta.</div>
+  </section>
+
+  <!-- 3 -->
+  <section class="slide" data-anim="v-chain">
+    <div class="eyebrow">La diferencia</div>
+    <h1 class="headline">Un agente sigue pasos, no una respuesta.</h1>
+    <div class="visual v-chain">
+      <div class="chain-track">
+        <div class="chain-line"></div>
+        <div class="chain-node"></div><div class="chain-node"></div><div class="chain-node"></div>
+        <div class="chain-node"></div><div class="chain-node"></div><div class="chain-node"></div>
+        <div class="chain-node"></div><div class="chain-node"></div><div class="chain-node"></div>
+      </div>
+    </div>
+    <div class="sub">En cada paso puede usar una herramienta real, como buscar, leer o calcular, antes de llegar al resultado.</div>
+  </section>
+
+  <!-- 4 -->
+  <section class="slide" data-anim="v-compare">
+    <div class="eyebrow">Mismo modelo, dos comportamientos</div>
+    <h1 class="headline">Claude vs. Claude Code</h1>
+    <div class="visual v-compare">
+      <div class="compare-row">
+        <div class="compare-col">
+          <div class="compare-label">Claude</div>
+          <div class="single-arrow"></div>
+          <div class="dead-end"></div>
+        </div>
+        <div class="compare-col">
+          <div class="compare-label">Claude Code</div>
+          <div class="loop"></div>
+          <div class="loop-tags"><span>escribe</span><span>prueba</span><span>corrige</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="sub">Es el mismo modelo en los dos casos. Cambia que uno tiene instrucciones, herramientas y permiso de repetir el ciclo solo.</div>
+  </section>
+
+  <!-- 5 -->
+  <section class="slide" data-anim="v-analogy">
+    <div class="eyebrow">Por qué falla un agente</div>
+    <h1 class="headline">Como contratar a alguien nuevo.</h1>
+    <div class="visual v-analogy">
+      <div class="person">🙋</div>
+      <div class="scribble"><div class="line"></div><div class="line"></div><div class="line"></div></div>
+    </div>
+    <div class="sub">Si la instrucción está incompleta, el resultado también lo estará. No es que el agente esté fallando solo.</div>
+  </section>
+
+  <!-- 6 -->
+  <section class="slide" data-anim="v-instructions">
+    <div class="eyebrow">Componente 1</div>
+    <h1 class="headline">Instrucciones</h1>
+    <div class="visual v-instructions">
+      <div class="blur-word">VAGO</div>
+      <div class="sharp-word">CLARO</div>
+    </div>
+    <div class="sub">Le dicen al agente qué hacer y cómo comportarse. Entre más claras, más confiable el resultado.</div>
+  </section>
+
+  <!-- 7 -->
+  <section class="slide" data-anim="v-tools">
+    <div class="eyebrow">Componente 2</div>
+    <h1 class="headline">Herramientas</h1>
+    <div class="visual v-tools">
+      <div class="tool-hub">🤖</div>
+      <div class="tool-icon t1">🔎</div>
+      <div class="tool-icon t2">📄</div>
+      <div class="tool-icon t3">🧮</div>
+      <div class="tool-icon t4">✍️</div>
+    </div>
+    <div class="sub">Es lo que el agente puede usar para actuar: buscar, leer un documento, calcular. No solo redactar.</div>
+  </section>
+
+  <!-- 8 -->
+  <section class="slide" data-anim="v-sequence">
+    <div class="eyebrow">Componente 3</div>
+    <h1 class="headline">Secuencia de pasos</h1>
+    <div class="visual v-sequence">
+      <div class="seq-track">
+        <div class="seq-bar"></div><div class="seq-dot"></div>
+        <div class="seq-box">🧠</div><div class="seq-box">🔎</div><div class="seq-box">📄</div>
+        <div class="seq-box">🧮</div><div class="seq-box">✍️</div>
+      </div>
+    </div>
+    <div class="sub">El resultado de un paso alimenta al siguiente. Así se puede revisar cada parte por separado.</div>
+  </section>
+
+  <!-- 9 -->
+  <section class="slide" data-anim="v-layers">
+    <div class="eyebrow">Lo que ustedes no diseñan</div>
+    <h1 class="headline">Lo que hay detrás</h1>
+    <div class="visual v-layers">
+      <div class="layer top"><span>Instrucciones · Herramientas · Secuencia</span><span>Suyo</span></div>
+      <div class="layer deep"><span>LLM</span><span>el motor</span></div>
+      <div class="layer deep"><span>Tool + MCP</span><span>el conector</span></div>
+      <div class="layer deep"><span>Harness</span><span>lo que los junta</span></div>
+    </div>
+    <div class="sub">Ustedes deciden instrucciones, herramientas y secuencia. Esto de aquí corre por detrás para que funcione.</div>
+  </section>
+
+  <!-- 10 -->
+  <section class="slide" data-anim="v-cards">
+    <div class="eyebrow">En la práctica</div>
+    <h1 class="headline">¿Para qué sirve?</h1>
+    <div class="visual v-cards">
+      <div class="flip-card"><div class="flip-inner">
+        <div class="flip-face front">📝</div><div class="flip-face back">Resumir</div>
+      </div></div>
+      <div class="flip-card"><div class="flip-inner">
+        <div class="flip-face front">🔍</div><div class="flip-face back">Extraer</div>
+      </div></div>
+      <div class="flip-card"><div class="flip-inner">
+        <div class="flip-face front">⚖️</div><div class="flip-face back">Comparar</div>
+      </div></div>
+      <div class="flip-card"><div class="flip-inner">
+        <div class="flip-face front">🌐</div><div class="flip-face back">Investigar</div>
+      </div></div>
+    </div>
+    <div class="sub">Tareas que se resuelven encadenando 2 o más pasos, no con una sola instrucción.</div>
+  </section>
+
+  <!-- 11 -->
+  <section class="slide" data-anim="v-fork">
+    <div class="eyebrow">La pregunta que más importa</div>
+    <h1 class="headline">¿Esto de verdad necesita un agente?</h1>
+    <div class="visual v-fork">
+      <div class="fork-path no"><span class="tag">Un paso</span><div class="fork-line"></div><span style="font-size:12px;color:var(--grey);">un buen prompt basta</span></div>
+      <div class="fork-path yes"><span class="tag">2+ pasos</span><div class="fork-line"><span></span><span></span><span></span><span></span></div><span style="font-size:12px;color:var(--red-bright);">ahí sí vale un agente</span></div>
+    </div>
+    <div class="sub">Una instrucción simple: un buen prompt basta. Dos o más pasos que conviene revisar por separado: ahí sí vale un agente.</div>
+  </section>
+
+  <!-- 12 -->
+  <section class="slide red-bg" data-anim="v-spectrum">
+    <div class="eyebrow">El mapa completo</div>
+    <h1 class="headline">De un prompt guardado a código a la medida.</h1>
+    <div class="visual v-spectrum">
+      <div class="spectrum-bar"><div class="spectrum-dot"></div></div>
+      <div class="spectrum-labels">
+        <span>Prompt guardado</span><span>Constructor visual</span><span>Automatización</span><span>Código a medida</span>
+      </div>
+    </div>
+    <div class="sub">Van de lo más simple a lo más avanzado. El constructor visual que usan hoy es el segundo escalón.</div>
+  </section>
+
+</div>
+
+<div class="nav">
+  <button class="nav-btn" id="prevBtn" aria-label="Anterior">←</button>
+  <div class="dots" id="dots"></div>
+  <button class="nav-btn" id="nextBtn" aria-label="Siguiente">→</button>
+</div>
+
+<script>
+(function(){
+  const slides = Array.from(document.querySelectorAll('.slide'));
+  const dotsEl = document.getElementById('dots');
+  const counterEl = document.getElementById('counter');
+  const prevBtn = document.getElementById('prevBtn');
+  const nextBtn = document.getElementById('nextBtn');
+  let current = 0;
+
+  slides.forEach((_, i) => {
+    const dot = document.createElement('div');
+    dot.className = 'dot';
+    dot.addEventListener('click', () => goTo(i));
+    dotsEl.appendChild(dot);
+  });
+  const dots = Array.from(dotsEl.children);
+
+  function restartAnim(slide){
+    slide.classList.remove('run');
+    void slide.offsetWidth; // reflow para poder re-disparar animaciones
+    slide.classList.add('run');
+  }
+
+  function render(){
+    slides.forEach((s, i) => {
+      s.classList.toggle('active', i === current);
+      s.classList.toggle('prev', i < current);
+    });
+    dots.forEach((d, i) => d.classList.toggle('active', i === current));
+    counterEl.textContent = String(current + 1).padStart(2,'0') + ' / ' + slides.length;
+    prevBtn.disabled = current === 0;
+    nextBtn.disabled = current === slides.length - 1;
+    document.body.classList.toggle('red-active', slides[current].classList.contains('red-bg'));
+    restartAnim(slides[current]);
+  }
+
+  function goTo(i){
+    if (i < 0 || i >= slides.length) return;
+    current = i;
+    render();
+  }
+  function next(){ goTo(current + 1); }
+  function prev(){ goTo(current - 1); }
+
+  prevBtn.addEventListener('click', prev);
+  nextBtn.addEventListener('click', next);
+
+  window.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); next(); }
+    if (e.key === 'ArrowLeft') { e.preventDefault(); prev(); }
+  });
+
+  let touchStartX = null;
+  window.addEventListener('touchstart', (e) => { touchStartX = e.touches[0].clientX; });
+  window.addEventListener('touchend', (e) => {
+    if (touchStartX === null) return;
+    const dx = e.changedTouches[0].clientX - touchStartX;
+    if (Math.abs(dx) > 50) { dx < 0 ? next() : prev(); }
+    touchStartX = null;
+  });
+
+  render();
+})();
+</script>
+
+</body>
+</html>
